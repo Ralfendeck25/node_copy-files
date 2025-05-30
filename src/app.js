@@ -1,31 +1,61 @@
-const fs = require('fs/promises');
-const path = require('path');
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-async function copyFile(sourcePath, destinationPath) {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export async function copyFile(sourcePath, destinationPath) {
   try {
-    await fs.copyFile(sourcePath, destinationPath);
-    console.log('✅ Arquivo copiado com sucesso!');
+    const absoluteSource = path.resolve(sourcePath);
+    const absoluteDest = path.resolve(destinationPath);
+
+    if (absoluteSource === absoluteDest) {
+      return {
+        success: false,
+        message: 'Arquivos de origem e destino são iguais. Operação cancelada.',
+      };
+    }
+
+    const sourceStats = await fs.stat(absoluteSource);
+    if (!sourceStats.isFile()) {
+      throw new Error('O caminho de origem não é um arquivo válido');
+    }
+
+    await fs.mkdir(path.dirname(absoluteDest), { recursive: true });
+    await fs.copyFile(absoluteSource, absoluteDest);
+
+    return {
+      success: true,
+      message: 'Arquivo copiado com sucesso',
+      source: absoluteSource,
+      destination: absoluteDest,
+    };
   } catch (error) {
-    console.error('❌ Erro:', error.message);
+    return {
+      success: false,
+      message: error.message,
+      error: error,
+    };
+  }
+}
+
+async function runCLI() {
+  if (process.argv.length !== 4) {
+    console.error('Uso: node src/app.js <arquivo-origem> <arquivo-destino>');
+    process.exit(1);
+  }
+
+  const result = await copyFile(process.argv[2], process.argv[3]);
+
+  if (result.success) {
+    console.log(result.message);
+  } else {
+    console.error(`Erro: ${result.message}`);
     process.exit(1);
   }
 }
 
-// Cria arquivos iniciais
-async function setupFiles() {
-  try {
-    await fs.mkdir('files', { recursive: true });
-    await fs.writeFile('files/readCopy.txt', 'Conteúdo inicial');
-  } catch (error) {
-    console.error('❌ Erro na configuração:', error.message);
-    process.exit(1);
-  }
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  runCLI();
 }
-
-// Execução principal
-async function main() {
-  await setupFiles();
-  await copyFile('files/readCopy.txt', 'files/readCopy2.txt');
-}
-
-main();

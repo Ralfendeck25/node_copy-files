@@ -6,14 +6,14 @@
   "main": "src/app.js",
   "scripts": {
     "example": "node example.js",
-    "start": "node --experimental-modules src/app.js files/readCopy.txt files/readCopy2.txt",
+    "start": "node src\\app.js files\\readCopy.txt files\\readCopy2.txt",
     "copy": "node src/app.js",
     "test:integration": "node src/app.js files/readCopy.txt files/readCopy2.txt && node src/app.js files/readCopy.txt files/readCopy.txt",
     "lint": "eslint './src/**/*.js' './tests/**/*.js' --fix",
     "format": "prettier --ignore-path .prettierignore --write './src/**/*.js' './tests/**/*.js'",
-    "test": "NODE_OPTIONS='--no-warnings' node --test tests/*.test.js",
+    "test": "set NODE_OPTIONS=--no-warnings && node --test --watch tests\\copyFiles.test.js",
     "test:watch": "NODE_OPTIONS='--no-warnings' node --test --watch tests/*.test.js",
-    "prepare": "husky install",
+    "prepare": "mkdir files & echo Conteúdo inicial > files\\readCopy.txt",
     "postinstall": "npm run prepare"
   },
   "author": "Mate academy",
