@@ -2,11 +2,11 @@
   "name": "node_copy-files",
   "version": "1.0.0",
   "description": "Copy files",
-  "type": "module",
+  "type": "commonjs",
   "main": "src/app.js",
   "scripts": {
     "example": "node example.js",
-    "start": "node src/app.js files/readCopy.txt files/readCopy2.txt",
+    "start": "node --experimental-modules src/app.js files/readCopy.txt files/readCopy2.txt",
     "copy": "node src/app.js",
     "test:integration": "node src/app.js files/readCopy.txt files/readCopy2.txt && node src/app.js files/readCopy.txt files/readCopy.txt",
     "lint": "eslint './src/**/*.js' './tests/**/*.js' --fix",
