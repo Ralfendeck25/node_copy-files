@@ -2,7 +2,7 @@
   "name": "node_copy-files",
   "version": "1.0.0",
   "description": "Copy files",
-  "type": "commonjs",
+  "type": "module",
   "main": "src/app.js",
   "scripts": {
     "example": "node example.js",
@@ -13,7 +13,8 @@
     "format": "prettier --ignore-path .prettierignore --write './src/**/*.js' './tests/**/*.js'",
     "test": "set NODE_OPTIONS=--no-warnings && node --test --watch tests\\copyFiles.test.js",
     "test:watch": "NODE_OPTIONS='--no-warnings' node --test --watch tests/*.test.js",
-    "prepare": "mkdir files & echo Conteúdo inicial > files\\readCopy.txt",
+    "prepare1": "node -e \"const fs = require('fs'); if (!fs.existsSync('files')) fs.mkdirSync('files'); fs.writeFileSync('files/readCopy.txt', 'Conteúdo inicial')\"",
+    "prepare": "mkdir files || true && echo Conteúdo inicial > files/readCopy.txt || true",
     "postinstall": "npm run prepare"
   },
   "author": "Mate academy",
