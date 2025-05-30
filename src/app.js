@@ -2,50 +2,101 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Configuração para obter __dirname em ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/**
+ * Copies a file from source to destination with validation and error handling
+ * @param {string} sourcePath Relative or absolute path to source file
+ * @param {string} destinationPath Relative or absolute path to destination file
+ * @returns {Promise<{success: boolean, message: string, source: string, destination: string}>}
+ */
 async function copyFile(sourcePath, destinationPath) {
     try {
-        // Resolve caminhos relativos à pasta do arquivo app.js
+        // Resolve and normalize paths
         const absoluteSource = path.resolve(__dirname, sourcePath);
         const absoluteDest = path.resolve(__dirname, destinationPath);
 
-        console.log(`Copiando de: ${absoluteSource}`);
-        console.log(`Para: ${absoluteDest}`);
-
-        // Verifica se são o mesmo arquivo
+        // Validate paths
         if (absoluteSource === absoluteDest) {
-            console.log('Origem e destino são iguais. Nenhuma ação necessária.');
-            return;
+            return {
+                success: false,
+                message: 'Source and destination paths are identical',
+                source: absoluteSource,
+                destination: absoluteDest
+            };
         }
 
-        // Verifica se a origem existe e é arquivo
-        const sourceStats = await fs.stat(absoluteSource);
+        // Verify source exists and is a file
+        let sourceStats;
+        try {
+            sourceStats = await fs.stat(absoluteSource);
+        } catch (err) {
+            if (err.code === 'ENOENT') {
+                throw new Error(`Source file does not exist: ${absoluteSource}`);
+            }
+            throw err;
+        }
+
         if (!sourceStats.isFile()) {
-            throw new Error('A origem deve ser um arquivo, não um diretório');
+            throw new Error(`Source is not a regular file: ${absoluteSource}`);
         }
 
-        // Cria diretório de destino se não existir
+        // Create destination directory if needed
         const destDir = path.dirname(absoluteDest);
-        await fs.mkdir(destDir, { recursive: true });
+        try {
+            await fs.mkdir(destDir, { recursive: true });
+        } catch (err) {
+            if (err.code !== 'EEXIST') {
+                throw new Error(`Failed to create destination directory: ${destDir}`);
+            }
+        }
 
-        // Executa a cópia
+        // Perform the copy operation
         await fs.copyFile(absoluteSource, absoluteDest);
-        console.log('✅ Arquivo copiado com sucesso!');
+
+        return {
+            success: true,
+            message: 'File copied successfully',
+            source: absoluteSource,
+            destination: absoluteDest
+        };
     } catch (error) {
-        console.error('❌ Erro:', error.message);
-        process.exit(1);
+        return {
+            success: false,
+            message: error.message,
+            source: sourcePath,
+            destination: destinationPath
+        };
     }
 }
 
-// Validação dos argumentos
-if (process.argv.length !== 4) {
-    console.error('Uso correto: node src/app.js <arquivo-origem> <arquivo-destino>');
-    console.error('Exemplo: node src/app.js files/readCopy.txt files/readCopy2.txt');
-    process.exit(1);
+/**
+ * Command Line Interface handler
+ */
+async function runCLI() {
+    if (process.argv.length !== 4) {
+        console.error('Usage: node src/app.js <source-file> <destination-file>');
+        console.error('Example: node src/app.js files/input.txt files/output.txt');
+        process.exit(1);
+    }
+
+    const [, , source, destination] = process.argv;
+    const result = await copyFile(source, destination);
+
+    if (!result.success) {
+        console.error(`Error: ${result.message}`);
+        process.exit(1);
+    }
+
+    console.log(result.message);
+    console.log(`Source: ${result.source}`);
+    console.log(`Destination: ${result.destination}`);
 }
 
-const [, , source, destination] = process.argv;
-copyFile(source, destination);
+// Run CLI only if executed directly
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    runCLI();
+}
+
+export { copyFile };

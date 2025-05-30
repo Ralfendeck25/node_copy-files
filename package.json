@@ -2,30 +2,34 @@
   "name": "node_copy-files",
   "version": "1.0.0",
   "description": "Copy files",
+  "type": "module",
   "main": "src/app.js",
   "scripts": {
-    "init": "mate-scripts init",
-    "start": "mate-scripts start",
-    "lint": "npm run format && mate-scripts lint",
-    "format": "prettier --ignore-path .prettierignore --write './src/**/*.{js,ts}'",
-    "test:only": "mate-scripts test",
-    "update": "mate-scripts update",
-    "postinstall": "npm run update",
-    "test": "npm run lint && npm run test:only"
+    "example": "node example.js",
+    "start": "node src/app.js files/readCopy.txt files/readCopy2.txt",
+    "copy": "node src/app.js",
+    "test:integration": "node src/app.js files/readCopy.txt files/readCopy2.txt && node src/app.js files/readCopy.txt files/readCopy.txt",
+    "lint": "eslint './src/**/*.js' './tests/**/*.js' --fix",
+    "format": "prettier --ignore-path .prettierignore --write './src/**/*.js' './tests/**/*.js'",
+    "test": "NODE_OPTIONS='--no-warnings' node --test tests/*.test.js",
+    "test:watch": "NODE_OPTIONS='--no-warnings' node --test --watch tests/*.test.js",
+    "prepare": "husky install",
+    "postinstall": "npm run prepare"
   },
   "author": "Mate academy",
   "license": "GPL-3.0",
   "devDependencies": {
     "@faker-js/faker": "^8.4.1",
     "@mate-academy/eslint-config": "latest",
-    "@mate-academy/scripts": "^1.8.6",
+    "cross-env": "^7.0.3",
     "eslint": "^8.57.0",
     "eslint-plugin-jest": "^28.6.0",
     "eslint-plugin-node": "^11.1.0",
+    "husky": "^9.0.11",
     "jest": "^29.7.0",
     "prettier": "^3.3.2"
   },
-  "mateAcademy": {
-    "projectType": "javascript"
+  "dependencies": {
+    "fs-extra": "^11.2.0"
   }
 }
