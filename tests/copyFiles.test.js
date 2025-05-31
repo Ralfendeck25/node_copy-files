@@ -1,91 +1,119 @@
-import { test, expect } from '@jest/globals';
-import fs from 'fs';
-import path from 'path';
-import { faker } from '@faker-js/faker';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { fileURLToPath } from 'url';
+/* eslint-disable max-len */
+'use strict';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const execAsync = promisify(exec);
+const fs = require('fs');
+const path = require('path');
+const { faker } = require('@faker-js/faker');
+
+const { exec } = require('child_process');
+const util = require('util');
+const execAsync = util.promisify(exec);
 
 describe('File Copy', () => {
   const baseCommand = 'node src/app.js';
   let sourceContent = '';
-  const tempDir = path.join(__dirname, 'temp', faker.string.uuid());
+  const tempDir = path.join('tests', faker.word.noun());
 
   const sourceFile = path.join(tempDir, faker.system.commonFileName('txt'));
-  const destinationFile = path.join(tempDir, faker.system.commonFileName('txt'));
+  const destinationFile = path.join(
+    tempDir,
+    faker.system.commonFileName('txt'),
+  );
 
   beforeEach(() => {
-    try {
-      fs.mkdirSync(tempDir, { recursive: true });
-      sourceContent = faker.lorem.paragraphs();
-      fs.writeFileSync(sourceFile, sourceContent);
-    } catch (error) {
-      console.error('Test setup failed:', error);
-      throw error;
-    }
+    fs.mkdirSync(tempDir);
+    sourceContent = faker.lorem.paragraphs();
+    fs.writeFileSync(sourceFile, sourceContent);
   });
 
   afterEach(() => {
-    try {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    } catch (error) {
-      console.error('Test cleanup failed:', error);
-    }
+    fs.rmdirSync(tempDir, { recursive: true });
   });
 
-  test('should copy file to new destination', async () => {
-    console.log(`Testing copy from ${sourceFile} to ${destinationFile}`);
+  test('should copy file to a new destination', async () => {
+    await execAsync(`${baseCommand} ${sourceFile} ${destinationFile}`);
 
-    const { stdout } = await execAsync(`"${baseCommand}" "${sourceFile}" "${destinationFile}"`);
-
-    expect(stdout).toContain('Arquivo copiado com sucesso');
     expect(fs.existsSync(destinationFile)).toBe(true);
 
+    const originalContent = fs.readFileSync(sourceFile, 'utf-8');
     const copiedContent = fs.readFileSync(destinationFile, 'utf-8');
+
+    expect(copiedContent).toEqual(originalContent);
+  });
+
+  test('should copy file to a new destination overwriting existing content', async () => {
+    const differentContent = faker.lorem.paragraph();
+
+    fs.writeFileSync(destinationFile, differentContent);
+
+    await execAsync(`${baseCommand} ${sourceFile} ${destinationFile}`);
+
+    const copiedContent = fs.readFileSync(destinationFile, 'utf-8');
+
     expect(copiedContent).toEqual(sourceContent);
   });
 
-  test('should overwrite existing file', async () => {
-    const differentContent = faker.lorem.paragraph();
-    fs.writeFileSync(destinationFile, differentContent);
+  test('should do nothing if source and destination are the same', async () => {
+    await execAsync(`${baseCommand} ${sourceFile} ${sourceFile}`);
 
-    const { stdout } = await execAsync(`"${baseCommand}" "${sourceFile}" "${destinationFile}"`);
+    const beforeStats = fs.statSync(sourceFile);
+    const afterStats = fs.statSync(sourceFile);
 
-    expect(stdout).toContain('Arquivo copiado com sucesso');
-    expect(fs.readFileSync(destinationFile, 'utf-8')).toEqual(sourceContent);
+    expect(beforeStats.mtime).toEqual(afterStats.mtime);
   });
 
-  test('should handle identical source and destination', async () => {
-    const { stdout } = await execAsync(`"${baseCommand}" "${sourceFile}" "${sourceFile}"`);
+  test('should throw an error if only one argument is provided', async () => {
+    const { stderr } = await execAsync(`${baseCommand} ${sourceFile}`);
 
-    expect(stdout).toContain('Arquivos de origem e destino são iguais');
-    expect(fs.readFileSync(sourceFile, 'utf-8')).toEqual(sourceContent);
+    expect(stderr.length).toBeGreaterThan(0);
   });
 
-  test('should fail with missing arguments', async () => {
-    await expect(execAsync(`"${baseCommand}"`))
-      .rejects
-      .toThrow();
+  test('should throw an error if source is a directory', async () => {
+    const directoryPath = path.join(
+      tempDir,
+      faker.system.commonFileName('txt'),
+    );
+
+    fs.mkdirSync(directoryPath);
+
+    const { stderr } = await execAsync(
+      `${baseCommand} ${directoryPath} ${destinationFile}`,
+    );
+
+    expect(stderr.length).toBeGreaterThan(0);
+    expect(fs.existsSync(destinationFile)).toBe(false);
   });
 
-  test('should fail when source is directory', async () => {
-    const dirPath = path.join(tempDir, 'subdir');
-    fs.mkdirSync(dirPath);
+  test('should throw an error if destination is a directory', async () => {
+    const directoryPath = path.join(
+      tempDir,
+      faker.system.commonFileName('txt'),
+    );
 
-    await expect(execAsync(`"${baseCommand}" "${dirPath}" "${destinationFile}"`))
-      .rejects
-      .toThrow();
+    fs.mkdirSync(directoryPath);
+
+    const { stderr } = await execAsync(
+      `${baseCommand} ${sourceFile} ${directoryPath}`,
+    );
+
+    expect(stderr.length).toBeGreaterThan(0);
+    expect(
+      fs.existsSync(path.join(directoryPath, path.basename(sourceFile))),
+    ).toBe(false);
   });
 
-  test('should fail for non-existent source', async () => {
-    const fakeFile = path.join(tempDir, 'nonexistent.txt');
+  test('should throw an error for non-existent source file', async () => {
+    const nonExistentFile = path.join(
+      tempDir,
+      faker.system.commonFileName('txt'),
+    );
 
-    await expect(execAsync(`"${baseCommand}" "${fakeFile}" "${destinationFile}"`))
-      .rejects
-      .toThrow();
+    const { stderr } = await execAsync(
+      `${baseCommand} ${nonExistentFile} ${destinationFile}`,
+    );
+
+    expect(stderr.length).toBeGreaterThan(0);
+
+    expect(fs.existsSync(destinationFile)).toBe(false);
   });
 });

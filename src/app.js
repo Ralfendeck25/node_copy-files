@@ -1,38 +1,51 @@
-import fs from 'fs/promises';
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
 
 const source = process.argv[2];
 const destination = process.argv[3];
+const extraContent = process.argv[4]; // Conteúdo adicional opcional
 
-async function app(src, dest) {
-  console.log('source', src);
-
-  if (!src || !dest) {
-    console.error('Please provide source and destination paths');
-    return;
-  }
-
+function app(src, dest) {
   try {
-    const srcStats = await fs.stat(src);
+    // Verificações iniciais
+    if (!src || !dest) {
+      throw new Error('Please provide source and destination paths');
+    }
+
+    // Verifica se o source existe
+    if (!fs.existsSync(src)) {
+      throw new Error('Source file does not exist');
+    }
+
+    // Verifica se o source é um arquivo
+    const srcStats = fs.statSync(src);
     if (srcStats.isDirectory()) {
-      console.error('Source is a directory');
-      return;
+      throw new Error('Source is a directory');
     }
 
-    try {
-      const destStats = await fs.stat(dest);
+    // Verifica se o destino é um diretório
+    if (fs.existsSync(dest)) {
+      const destStats = fs.statSync(dest);
       if (destStats.isDirectory()) {
-        console.error('Destination is a directory');
-        return;
+        throw new Error('Destination is a directory');
       }
-      console.log('Destination file exists and will be overwritten');
-    } catch (err) {
-      // Destination doesn't exist (okay)
+      console.log('Warning: Destination file will be overwritten');
     }
 
-    await fs.copyFile(src, dest);
+    // Copia o arquivo
+    fs.copyFileSync(src, dest);
     console.log('File copied successfully');
-  } catch (err) {
-    console.error('Error:', err.message);
+
+    // Adiciona conteúdo extra se fornecido
+    if (extraContent) {
+      fs.appendFileSync(dest, extraContent);
+      console.log('Extra content added to destination file');
+    }
+  } catch (error) {
+    console.error('Error:', error.message);
+    process.exit(1);
   }
 }
 
