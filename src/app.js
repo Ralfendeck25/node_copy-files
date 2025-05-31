@@ -1,52 +1,56 @@
 'use strict';
 
-const fs = require('node:fs');
-const path = require('node:path');
+const { copyFileWithAdditionalContent } = require('./autocriacao');
+const path = require('path');
+const fs = require('fs');
 
-const source = process.argv[2];
-const destination = process.argv[3];
-const extraContent = process.argv[4]; // Conteúdo adicional opcional
+const logger = {
+  info: (message) => process.stdout.write(`${message}\n`),
+  error: (message) => process.stderr.write(`ERROR: ${message}\n`),
+  success: (message) => process.stdout.write(`✔ ${message}\n`),
+};
 
-function app(src, dest) {
+function validateInputs(src, dest) {
+  if (!src || !dest) {
+    throw new Error('Por favor forneça caminhos de origem e destino');
+  }
+
+  if (src === dest) {
+    throw new Error('Origem e destino não podem ser iguais');
+  }
+
+  if (!fs.existsSync(src)) {
+    throw new Error(`Arquivo de origem não encontrado: ${src}`);
+  }
+
+  if (fs.statSync(src).isDirectory()) {
+    throw new Error('O caminho de origem é um diretório');
+  }
+
+  if (fs.existsSync(dest) && fs.statSync(dest).isDirectory()) {
+    throw new Error('O caminho de destino é um diretório');
+  }
+}
+
+function main() {
   try {
-    // Verificações iniciais
-    if (!src || !dest) {
-      throw new Error('Please provide source and destination paths');
-    }
+    const [, , srcFile, destFile, extraContent] = process.argv;
 
-    // Verifica se o source existe
-    if (!fs.existsSync(src)) {
-      throw new Error('Source file does not exist');
-    }
+    validateInputs(srcFile, destFile);
+    process.chdir(path.join(__dirname, '../'));
 
-    // Verifica se o source é um arquivo
-    const srcStats = fs.statSync(src);
-    if (srcStats.isDirectory()) {
-      throw new Error('Source is a directory');
-    }
+    const result = copyFileWithAdditionalContent(
+      srcFile,
+      destFile,
+      extraContent,
+    );
 
-    // Verifica se o destino é um diretório
-    if (fs.existsSync(dest)) {
-      const destStats = fs.statSync(dest);
-      if (destStats.isDirectory()) {
-        throw new Error('Destination is a directory');
-      }
-      console.log('Warning: Destination file will be overwritten');
-    }
-
-    // Copia o arquivo
-    fs.copyFileSync(src, dest);
-    console.log('File copied successfully');
-
-    // Adiciona conteúdo extra se fornecido
-    if (extraContent) {
-      fs.appendFileSync(dest, extraContent);
-      console.log('Extra content added to destination file');
-    }
-  } catch (error) {
-    console.error('Error:', error.message);
+    logger.success('Operação concluída:');
+    logger.info(result);
+  } catch (err) {
+    logger.error(err.message);
     process.exit(1);
   }
 }
 
-app(source, destination);
+main();
